@@ -159,6 +159,31 @@ int test_list(){
 }
 
 
+
+int test_adjust_to_fit(){
+    Rectangle* r1, *r2;
+    COORD_TYPE c1[2];
+    COORD_TYPE c2[2];
+    set_coords2(c1, 1, 2, -2, 2);
+    set_coords2(c2, -1, 0, 1, 5);
+
+    if(rec_alloc(&r1, 2, (const COORD_TYPE*) c1) < 0){
+        printf("Error allocating");
+        exit(1);
+    }
+    if(rec_alloc(&r2, 2, (const COORD_TYPE*) c2) < 0){
+        printf("Error allocating");
+        exit(1);
+    }
+
+    rec_adjust_to_fit(r1, (const Rectangle *) r2);
+
+    rec_print(r1);
+
+    return 1;
+}
+
+
 int test_overlap(){
 	int success = 1;
 	int ov;
@@ -327,7 +352,6 @@ int test_insert2(){
         //rtree_print(t);
     }
     rtree_print(t);
-    rec_free(t->root->r);
     rtree_free(t);
     return 1;
 }
@@ -436,8 +460,8 @@ int test_insert3(){
     insert(t, e);
     printf("***7***");
     rtree_print(t);
-
-
+    test_search(t);
+    rtree_free(t);
     return 1;
 
 }
@@ -445,7 +469,33 @@ int test_insert3(){
 
 
 
+int test_search(Rtree* t){
+    QuerySet q;
+    list_alloc(&(q.values));
+    q.size = 0;
 
+    Rectangle* r;
+    COORD_TYPE c[2];
+    set_coords2(c, 1, 2, -2, 2);
+    if(rec_alloc(&r, 2, (const COORD_TYPE*) c) < 0){
+        printf("Error allocating");
+        exit(1);
+    }
+    rec_print(r);
+    printf("Testing search\n");
+    search(t, NULL, r, &q);
+    List* l = q.values;
+    unsigned* datap;
+    printf("Queryset size is %d, it contains: ", q.size);
+    while((datap = list_pop(l)) != NULL){
+        printf("%d ", *datap);
+    }
+    printf("\n");
+
+    rec_free(r);
+    list_free(q.values);
+    return q.size;
+}
 
 
 int main(){
@@ -453,11 +503,12 @@ int main(){
 	//printf("Test operations: %d\n", test_operations());
 	//printf("Test surface: %d\n", test_surface());
 	//printf("Test overlap: %d\n", test_overlap());
+    //test_adjust_to_fit();
     //printf("Test insert: %d\n", test_insert());
     //printf("Test list: %d\n", test_list());
 
-    test_insert2();
-    //test_insert3();
+    //test_insert2();
+    test_insert3();
 
 	return 0;
 }

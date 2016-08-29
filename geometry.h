@@ -40,4 +40,6 @@ void rec_print(Rectangle *r);
 
 double rec_get_surface(Rectangle* r);
 
+void rec_copy(Rectangle **rp, Rectangle* r);
+
 #endif 

@@ -14,10 +14,10 @@ static inline double absv(double a){
 	return a >= 0 ? a : -a;
 }
 
-static inline swap(void* p1, void* p2){
-	void* tmp = p1;
-	p1 = p2;
-	p2 = tmp;
+static inline swap(void** p1, void** p2){
+	void* tmp = *p1;
+	*p1 = *p2;
+	*p2 = tmp;
 }
 
 static inline int is_limit(double a){

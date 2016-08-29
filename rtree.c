@@ -19,7 +19,7 @@ int rtree_alloc(Rtree** tp, unsigned m, unsigned M, unsigned dim){
 	t->m = m;
 	t->M = M;
 	t->dim = dim;
-	if(node_alloc(&(t->root), M, dim) < 0){
+	if(node_alloc_no_rec(&(t->root), M, dim) < 0){
         return -1;
     }
 
@@ -111,7 +111,7 @@ int node_isroot(Node* n){
 
 int node_insert(const Rtree* t, Node* n, Entry *e){
     assert(n->nb_entries <= t->M);
-    printf("Inserting entry %p at index %d in node %p, rectangle is %p\n", e, n->nb_entries, n, e->r);
+    //printf("Inserting entry %p at index %d in node %p, rectangle is %p\n", e, n->nb_entries, n, e->r);
     n->entries[n->nb_entries] = e;
     n->nb_entries++;
     if(e->node != NULL){
@@ -134,23 +134,42 @@ int node_insert(const Rtree* t, Node* n, Entry *e){
 
 */
 void search(Rtree* t, Node* n, Rectangle* r, QuerySet* entries){
+    assert(t != NULL);
 	Node* cur_n;
 	if(n == NULL){
 		cur_n = t->root;
 	}
+    else{
+        cur_n = n;
+    }
+    assert(cur_n != NULL);
 	int i=0;
-	if(node_isleaf(t, n)){
-		for(i=0; i<n->nb_entries;i++){
-			if(rec_overlap(r, (n->entries)[i]->r)){
-				queryset_insert(entries, (n->entries)[i]->id);
+	if(node_isleaf(t, cur_n)){
+		for(i=0; i<cur_n->nb_entries;i++){
+            printf("Testing overlap of %p: ", (cur_n->entries)[i]->r);
+			if(rec_overlap(r, (cur_n->entries)[i]->r)){
+                printf("True\n");
+				queryset_insert(entries, (cur_n->entries)[i]->id);
 			}
+            else{
+                printf("False\n");
+            }
+            
+            rec_print((cur_n->entries)[i]->r);
 		}
 	}
 	else{
-		for(i=0; i<n->nb_entries;i++){
-			if(rec_overlap(r, (n->entries)[i]->r)){
-				search(t, (n->entries)[i]->node, r, entries);
+		for(i=0; i<cur_n->nb_entries;i++){
+            printf("Testing overlap of %p: ", (cur_n->entries)[i]->r);
+			if(rec_overlap(r, (cur_n->entries)[i]->r)){
+                printf("True\n");
+                rec_print((cur_n->entries)[i]->r);
+				search(t, (cur_n->entries)[i]->node, r, entries);
 			}
+            else{
+                printf("False\n");
+                rec_print((cur_n->entries)[i]->r);
+            }           
 		}
 	}
 }
@@ -210,7 +229,7 @@ Node* _choose_leaf(Rtree* t, Node* n, Rectangle* r, Rectangle** r_best, Rectangl
 		s = rec_get_surface(*r_t);
 		if(s < min_surface){
 			min_surface = s;
-			swap(r_best, r_t);
+			swap((void **) &r_best, (void **) &r_t);
 			index = i;
 		}
 		else if(s == min_surface){ 
@@ -220,7 +239,7 @@ Node* _choose_leaf(Rtree* t, Node* n, Rectangle* r, Rectangle** r_best, Rectangl
 				// choose r_cur
 				enlargement = e;
 				index = i;
-				swap(r_best, r_t);
+				swap((void **) &r_best, (void **) &r_t);
 			}
 		}
 	}
@@ -239,6 +258,29 @@ int entry_alloc(Entry** e, int id, Node* n){
     (*e)->r = n->r;
     return 0;
 }
+
+
+void node_adjust(Node* n){
+    Rectangle* r1 = n->r;
+    Rectangle* r2;
+    int i;
+    for(i=0;i<n->nb_entries;i++){
+        r2 = (n->entries)[i]->r;
+        double* l1 = *(r1->coords+i);
+        double* h1 = l1;
+        double* l2 = *(r2->coords+i);
+        double* h2 = l2;
+
+        // sets l1 to the lowest value of the interval in this dimension
+        ((r1->coords)[i][0] > (r1->coords)[i][1]) ? l1++ : h1++;
+        // sets l2 to the lowest value of the interval in this dimension
+        ((r2->coords)[i][0] > (r2->coords)[i][1]) ? l2++ : h2++;
+
+        (r1->coords)[i][0] = min(*l1, *l2);
+        (r1->coords)[i][1] = max(*h1, *h2);
+    }
+}
+
 
 /*
     k: the node from which we are adjusting. 
@@ -261,11 +303,17 @@ int entry_alloc(Entry** e, int id, Node* n){
 
 */
 void adjust_tree(Rtree* t, Node* k, Node* l, Node* ll){
+    printf("Adjusting node %p %p %p\n", k, l, ll);
+    if(l != NULL){
+        rec_print(l->r);
+        rec_print(ll->r);
+    }
     Node* n = k;
     Node* p;
     if(node_isroot(k)){
         p = k;
         if(l == NULL){
+            rec_adjust_to_fit(p->r, (const Rectangle *) n->r);
             return;
         }
         // The root was splitted
@@ -273,6 +321,7 @@ void adjust_tree(Rtree* t, Node* k, Node* l, Node* ll){
             printf("Growing the root %p\n", t->root);
         assert(ll != NULL);
         rec_adjust_to_fit(p->r, (const Rectangle *) ll->r);
+        rec_adjust_to_fit(p->r, (const Rectangle *) l->r);
         Node* new_root;
         assert(node_alloc_no_rec(&new_root, t->M, 2) == 0);
         Entry* new_e1;
@@ -405,6 +454,12 @@ int insert(Rtree* t, Entry* e){
     assert(e != NULL);
     Node* n = choose_leaf(t, NULL, e->r);
     assert(n != NULL);
+    printf("Inserting rectangle %p\n", e->r);
+    rec_print(e->r);
+    // First insertion
+    if(n == t->root && t->root->r == NULL){
+        rec_copy(&(t->root->r), e->r);
+    }
 
     if(!node_insert(t, n, e)){
         // We have to split the Node !
@@ -420,7 +475,7 @@ int insert(Rtree* t, Entry* e){
         adjust_tree(t, n, n1, n2);
         return 0;
     }
-
+    rec_adjust_to_fit(n->r, (const Rectangle *) e->r);
     adjust_tree(t, n, NULL, NULL);
 
     return 1;
@@ -495,8 +550,8 @@ void print_entry(Entry* e){
     the tree during subsequent splits or when freeing the tree. 
 */
 void quadratic_split(const Rtree* t, const Node* n, Node* n1, Node* n2){
-    if(debug)
-        printf("Splitting node %p with %d entries\n", n, n->nb_entries);
+    /*if(debug)
+        printf("Splitting node %p with %d entries\n", n, n->nb_entries);*/
     Entry* e1;
     Entry* e2;
     pick_seeds(n, &e1, &e2);
@@ -557,32 +612,32 @@ void quadratic_split(const Rtree* t, const Node* n, Node* n1, Node* n2){
         if(d1 < d2){
             // Add to group 1
             s1 = s1_tmp;
-            swap(r1, r_tmp1);
+            swap((void **) &r1, (void **) &r_tmp1);
             qs_insert(t, n1, e, &a1, &remaining);
         }
         else if(d2 < d1){
             // Add to group 2
             s2 = s2_tmp;
-            swap(r2, r_tmp2);
+            swap((void **) &r2, (void **) &r_tmp2);
             qs_insert(t, n2, e, &a2, &remaining);
         }
         else{
             // Compare the surfaces
             if(s1_tmp < s2_tmp){
                 s1 = s1_tmp;
-                swap(r1, r_tmp1);
+                swap((void **) &r1, (void **) &r_tmp1);
                 qs_insert(t, n1, e, &a1, &remaining);
             }
             else if(s2_tmp < s1_tmp){
                 s2 = s2_tmp;
-                swap(r2, r_tmp2);
+                swap((void **) &r2, (void **) &r_tmp2);
                 qs_insert(t, n2, e, &a2, &remaining);
             }
             else{
                 // Compare group sizes
                 if(n1->nb_entries < n2->nb_entries){
                     s1 = s1_tmp;
-                    swap(r1, r_tmp1);
+                    swap((void **) &r1, (void **) &r_tmp1);
                     qs_insert(t, n1, e, &a1, &remaining);
                 }
                 else{
@@ -590,7 +645,7 @@ void quadratic_split(const Rtree* t, const Node* n, Node* n1, Node* n2){
                     // entries we default to group 2 (chosen by a fair 
                     // coin toss :) )
                     s2 = s2_tmp;
-                    swap(r2, r_tmp2);
+                    swap((void **) &r2, (void **) &r_tmp2);
                     qs_insert(t, n2, e, &a2, &remaining);
                 }
             }
@@ -625,14 +680,15 @@ void rtree_print(Rtree* t){
     list_alloc(&rects);
     int i;
     Node* cur_node = t->root;
-   /* printf("Current node: %p, nb entries: %d   ", cur_node, cur_node->nb_entries);
+    printf("Current node: %p (R: %p), nb entries: %d   ", cur_node, cur_node->r, cur_node->nb_entries);
+    list_append(rects, cur_node->r);
     for(i=0;i<cur_node->nb_entries;i++){
         Entry* e = (cur_node->entries)[i];
-        printf("R: %p, N: %p   ", e->r, e->node);
+        printf("R: %p, N: %p id: %d  ", e->r, e->node, e->id);
         list_append(to_empty, (void *) e->node);
         list_append(rects, e->r);
     }
-    printf("\n");*/
+    printf("\n");
     list_append(to_empty, cur_node);
     int b = node_isleaf(t, cur_node);
     int j=0;
@@ -643,12 +699,13 @@ void rtree_print(Rtree* t){
         }
         j++;
         while((cur_node = list_pop(to_empty)) != NULL){
-            printf("Current node: %p, nb entries: %d (parent %p)  ", cur_node, 
+            printf("Current node: %p (R: %p), nb entries: %d (parent %p)  ", cur_node, cur_node->r, 
                 cur_node->nb_entries, cur_node->parent);
+            list_append(rects, cur_node->r);
             b = b || node_isleaf(t, cur_node);
             for(i=0;i<cur_node->nb_entries;i++){
                 Entry* e = (cur_node->entries)[i];
-                printf("R: %p, N: %p   ", e->r, e->node);
+                printf("R: %p, N: %p id: %d  ", e->r, e->node, e->id);
                 list_append(to_fill, (void *) e->node);
                 list_append(rects, e->r);
             }
@@ -667,12 +724,12 @@ void rtree_print(Rtree* t){
     }while(!b);
 
     ListNode* ln = rects->first;
-    /*while(ln != NULL){
+    while(ln != NULL){
         Rectangle* r = (Rectangle*) ln->data;
         printf("Rectangle at %p\n", r);
         rec_print(r);
         ln = ln->next;
-    }*/
+    }
 
 
     printf("\n\n=======================\n");
@@ -688,6 +745,7 @@ void rtree_free(Rtree* t){
     List* to_free;
     list_alloc(&to_free);
     list_append(to_free, t->root);
+    rec_free(t->root->r);
     Node* cur_node;
     while((cur_node = list_pop(to_free)) != NULL){
         int i;

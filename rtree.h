@@ -57,6 +57,8 @@ int node_alloc(Node** n, unsigned M, unsigned dim);
 
 int node_alloc_no_rec(Node** n, unsigned M, unsigned dim);
 
+void node_adjust(Node* n);
+
 void rtree_free(Rtree* t);
 
 void node_free(Node *);

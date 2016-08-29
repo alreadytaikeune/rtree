@@ -119,6 +119,10 @@ void rec_adjust_to_fit(Rectangle* r1, const Rectangle* r2){
     assert(r2 != NULL);
     assert(r1->dim == r2->dim);
 
+    printf("Adjusting %p to %p\n", r1, r2);
+    rec_print(r1);
+    rec_print((Rectangle *) r2);
+
     int i;
     for(i=0; i<r1->dim;i++){
         double* l1 = *(r1->coords+i);
@@ -134,6 +138,8 @@ void rec_adjust_to_fit(Rectangle* r1, const Rectangle* r2){
         (r1->coords)[i][0] = min(*l1, *l2);
         (r1->coords)[i][1] = max(*h1, *h2);
     }
+    rec_print(r1);
+    printf("\n");
 }
 
 
@@ -165,6 +171,13 @@ void rec_print(Rectangle *r){
 }
 
 
+void rec_copy(Rectangle **rp, Rectangle* r){
+    if(rec_alloc(rp, r->dim, (const COORD_TYPE*) r->coords) < 0){
+        printf("Error allocating");
+        exit(1);
+    }
+}
+
 double rec_get_surface(Rectangle* r){
 	double s = 1;
 	int i = 0;
@@ -176,6 +189,8 @@ double rec_get_surface(Rectangle* r){
 	}
 	return s;
 }
+
+
 
 void rec_free(Rectangle* r){
 	int i;
