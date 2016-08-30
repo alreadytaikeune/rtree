@@ -360,7 +360,7 @@ int test_insert2(){
 int test_insert3(){
     COORD_TYPE c[2];
     Rtree* t;
-    rtree_alloc(&t, 1, 2, 2);
+    rtree_alloc(&t, 1, 4, 2);
     Rectangle* r;
     Entry* e;
 
@@ -494,20 +494,20 @@ int test_search(Rtree* t){
 
     rec_free(r);
     list_free(q.values);
-    return q.size;
+    return q.size == 4;
 }
 
 
 int main(){
 
-	//printf("Test operations: %d\n", test_operations());
-	//printf("Test surface: %d\n", test_surface());
-	//printf("Test overlap: %d\n", test_overlap());
-    //test_adjust_to_fit();
-    //printf("Test insert: %d\n", test_insert());
-    //printf("Test list: %d\n", test_list());
+	printf("Test operations: %d\n", test_operations());
+	printf("Test surface: %d\n", test_surface());
+	printf("Test overlap: %d\n", test_overlap());
+    test_adjust_to_fit();
+    printf("Test insert: %d\n", test_insert());
+    printf("Test list: %d\n", test_list());
 
-    //test_insert2();
+    test_insert2();
     test_insert3();
 
 	return 0;

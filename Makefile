@@ -2,28 +2,48 @@
 CC=gcc -g -O0
 
 
-LINKER   = gcc -o
+LINKER   = gcc 
 # linking flags here
-LFLAGS   = -Wall 
+LFLAGS   = -Wall -shared 
 
-TARGET=test_tree
+CFLAGS   = -fPIC
 
-$(TARGET): geometry.o rtree.o main.o list.o
-	$(LINKER) $@ geometry.o rtree.o main.o list.o
+TARGET_LIB=librtree 
+TARGET_TEST=test_tree
 
-geometry.o: geometry.c geometry.h
-	$(CC) -c geometry.c -o $@
+C_FILES := $(wildcard *.c)
+OBJ := $(notdir $(C_FILES:.c=.o))
+OBJ_LIB = geometry.o list.o rtree.o
 
-rtree.o: rtree.c rtree.h
-	$(CC) -c rtree.c -o $@
 
-list.o: list.c list.h
-	$(CC) -c list.c -o $@
+$(TARGET_LIB): $(OBJ_LIB)
+	$(LINKER) $(LFLAGS) -Wl,-soname,$@.1 -o $@ $^
 
-main.o: main.c 
-	$(CC) -c main.c -o $@
-	
-.PHONY: clean
+$(TARGET_TEST): $(OBJ)
+	$(LINKER) -o $@ $^
+
+$(OBJ): %.o : %.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+# geometry.o: geometry.c geometry.h
+# 	$(CC) -c geometry.c -o $@
+
+# rtree.o: rtree.c rtree.h
+# 	$(CC) -c rtree.c -o $@
+
+# list.o: list.c list.h
+# 	$(CC) -c list.c -o $@
+
+# main.o: main.c 
+# 	$(CC) -c main.c -o $@
+
+
+
+
+.PHONY: clean install
 
 clean:
-	-$(RM) main.o geometry.o rtree.o
+	-$(RM) $(OBJ) $(TARGET_LIB) $(TARGET_TEST)
+
+install:
+	@- cp $(TARGET_LIB) /usr/local/lib/$(TARGET_LIB)

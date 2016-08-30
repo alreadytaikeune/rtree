@@ -59,14 +59,16 @@ void node_free(Node* n){
 }
 
 void node_free_deep(Node* n){
-    printf("Freeing node at %p\n", n);
+    if(debug)
+        printf("Freeing node at %p\n", n);
     int i;
     for(i=0;i<n->nb_entries;i++){
         rec_free(n->entries[i]->r);
         free(n->entries[i]);
     }
     free(n->entries);
-    printf("Freeing rec %p\n", n->r);
+    if(debug)
+        printf("Freeing rec %p\n", n->r);
     free(n);
 }
 
@@ -146,30 +148,16 @@ void search(Rtree* t, Node* n, Rectangle* r, QuerySet* entries){
 	int i=0;
 	if(node_isleaf(t, cur_n)){
 		for(i=0; i<cur_n->nb_entries;i++){
-            printf("Testing overlap of %p: ", (cur_n->entries)[i]->r);
 			if(rec_overlap(r, (cur_n->entries)[i]->r)){
-                printf("True\n");
 				queryset_insert(entries, (cur_n->entries)[i]->id);
 			}
-            else{
-                printf("False\n");
-            }
-            
-            rec_print((cur_n->entries)[i]->r);
 		}
 	}
 	else{
 		for(i=0; i<cur_n->nb_entries;i++){
-            printf("Testing overlap of %p: ", (cur_n->entries)[i]->r);
 			if(rec_overlap(r, (cur_n->entries)[i]->r)){
-                printf("True\n");
-                rec_print((cur_n->entries)[i]->r);
 				search(t, (cur_n->entries)[i]->node, r, entries);
-			}
-            else{
-                printf("False\n");
-                rec_print((cur_n->entries)[i]->r);
-            }           
+			}         
 		}
 	}
 }
@@ -189,8 +177,8 @@ Node* choose_leaf(Rtree* t, Node* n, Rectangle* r){
 
 	rec_free(r_fit);
 	rec_free(r_fit2);
-
-    printf("Chosen leaf is: %p\n", out);
+    if(debug)
+        printf("Chosen leaf is: %p\n", out);
 	return out;
 
 }
@@ -303,7 +291,8 @@ void node_adjust(Node* n){
 
 */
 void adjust_tree(Rtree* t, Node* k, Node* l, Node* ll){
-    printf("Adjusting node %p %p %p\n", k, l, ll);
+    if(debug)
+        printf("Adjusting node %p %p %p\n", k, l, ll);
     if(l != NULL){
         rec_print(l->r);
         rec_print(ll->r);
@@ -338,7 +327,8 @@ void adjust_tree(Rtree* t, Node* k, Node* l, Node* ll){
         node_free(p);
         t->root = new_root;
         new_root->parent = new_root;
-        printf("New root is %p\n", new_root);
+        if(debug)
+            printf("New root is %p\n", new_root);
         return;
     }
 
@@ -454,8 +444,11 @@ int insert(Rtree* t, Entry* e){
     assert(e != NULL);
     Node* n = choose_leaf(t, NULL, e->r);
     assert(n != NULL);
-    printf("Inserting rectangle %p\n", e->r);
-    rec_print(e->r);
+    if(debug){
+        printf("Inserting rectangle %p\n", e->r);
+        rec_print(e->r);
+    }
+    
     // First insertion
     if(n == t->root && t->root->r == NULL){
         rec_copy(&(t->root->r), e->r);
