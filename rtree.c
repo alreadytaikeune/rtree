@@ -543,8 +543,8 @@ void print_entry(Entry* e){
     the tree during subsequent splits or when freeing the tree. 
 */
 void quadratic_split(const Rtree* t, const Node* n, Node* n1, Node* n2){
-    /*if(debug)
-        printf("Splitting node %p with %d entries\n", n, n->nb_entries);*/
+    if(debug)
+        printf("Splitting node %p with %d entries\n", n, n->nb_entries);
     Entry* e1;
     Entry* e2;
     pick_seeds(n, &e1, &e2);
@@ -556,7 +556,7 @@ void quadratic_split(const Rtree* t, const Node* n, Node* n1, Node* n2){
     int e1_or_e2 = 0; // counter of e1 or e2 occurrence
     //a2 = i - e1_or_e2 - a1 at any point in the loop
 
-    int remaining = nb - e1_or_e2; // entries remaining after i loops : nb - e1_or_e2 - i
+    int remaining = nb - 2; // entries remaining after i loops : nb - (m - e1_or_e2) - i
     double d1, d2, s1, s2, s1_tmp, s2_tmp;
     Entry* e;
     Rectangle* r_tmp1;
@@ -578,6 +578,7 @@ void quadratic_split(const Rtree* t, const Node* n, Node* n1, Node* n2){
             e1_or_e2++;
             continue;
         }
+        printf("%d %d %d %d\n", m, a1, a2, remaining);
         if(m-a1 == remaining){ 
             // everything entry left should be added to a1 to 
             // reach the minimum of m entries
@@ -682,7 +683,6 @@ void rtree_print(Rtree* t){
         list_append(rects, e->r);
     }
     printf("\n");
-    list_append(to_empty, cur_node);
     int b = node_isleaf(t, cur_node);
     int j=0;
     do{
@@ -716,13 +716,13 @@ void rtree_print(Rtree* t){
         printf("~~~~~\n");*/
     }while(!b);
 
-    ListNode* ln = rects->first;
+    /*ListNode* ln = rects->first;
     while(ln != NULL){
         Rectangle* r = (Rectangle*) ln->data;
         printf("Rectangle at %p\n", r);
         rec_print(r);
         ln = ln->next;
-    }
+    }*/
 
 
     printf("\n\n=======================\n");
